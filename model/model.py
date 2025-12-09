@@ -5,53 +5,56 @@ from database.dao import DAO
 class Model:
     def __init__(self):
         self.G = nx.Graph()
+        self.id_map = {}
 
     def build_graph(self, year: int):
         """
-        Costruisce il grafo (self.G) dei rifugi considerando solo le connessioni
-        con campo `anno` <= year passato come argomento.
-        Quindi il grafo avrà solo i nodi che appartengono almeno ad una connessione, non tutti quelli disponibili.
-        :param year: anno limite fino al quale selezionare le connessioni da includere.
+        Costruisce il grafo.
         """
-        # TODO
+        self.G.clear()
+
+        all_rifugi = DAO.get_all_rifugi()
+
+        self.id_map = {}
+        for r in all_rifugi:
+            self.id_map[r.id_rifugio] = r
+            self.G.add_node(r.id_rifugio)
+
+        connessioni = DAO.get_all_connessioni(year)
+
+        for c in connessioni:
+            # Controllo di sicurezza: creo l'arco solo se entrambi i nodi esistono
+            if c.id_rifugio1 in self.id_map and c.id_rifugio2 in self.id_map:
+                self.G.add_edge(c.id_rifugio1, c.id_rifugio2)
+
+        print(f"Grafo creato con {len(self.G.nodes)} nodi e {len(self.G.edges)} archi")
 
     def get_nodes(self):
-        """
-        Restituisce la lista dei rifugi presenti nel grafo.
-        :return: lista dei rifugi presenti nel grafo.
-        """
-        # TODO
+        return list(self.G.nodes())
 
     def get_num_neighbors(self, node):
-        """
-        Restituisce il grado (numero di vicini diretti) del nodo rifugio.
-        :param node: un rifugio (cioè un nodo del grafo)
-        :return: numero di vicini diretti del nodo indicato
-        """
-        # TODO
+        return self.G.degree(node)
 
     def get_num_connected_components(self):
-        """
-        Restituisce il numero di componenti connesse del grafo.
-        :return: numero di componenti connesse
-        """
-        # TODO
+        return nx.number_connected_components(self.G)
 
     def get_reachable(self, start):
-        """
-        Deve eseguire almeno 2 delle 3 tecniche indicate nella traccia:
-        * Metodi NetworkX: `dfs_tree()`, `bfs_tree()`
-        * Algoritmo ricorsivo DFS
-        * Algoritmo iterativo
-        per ottenere l'elenco di rifugi raggiungibili da `start` e deve restituire uno degli elenchi calcolati.
-        :param start: nodo di partenza, da non considerare nell'elenco da restituire.
+        reachable = self.get_reachable_recursive(start)
+        return reachable
 
-        ESEMPIO
-        a = self.get_reachable_bfs_tree(start)
-        b = self.get_reachable_iterative(start)
-        b = self.get_reachable_recursive(start)
+    def get_reachable_recursive(self, start):
+        reachable = set()
+        visited = set()
 
-        return a
-        """
+        def _ricorsione(current_node):
+            visited.add(current_node)
+            reachable.add(current_node)
 
-        # TODO
+            for neighbor in self.G.neighbors(current_node):
+                if neighbor not in visited:
+                    _ricorsione(neighbor)
+
+        _ricorsione(start)
+
+        reachable.discard(start)
+        return list(reachable)
